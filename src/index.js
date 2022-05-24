@@ -10,25 +10,74 @@ app.use(cors());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+  
+  const user = users.find(user => user.username === username);
+
+  if(!user) {
+    return response.status(404).json({error: "Username not found!"})
+  }
+
+  request.user = user;
+
+  return next()
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  // O usuário grátis é false e pode salvar até 10 todos
+  const { user } = request;
+  
+  if(user.pro) {
+    return next();
+  } else if(!user.pro && user.todos.length + 1 <= 10) {
+    return next();
+  } else {
+    return response.status(403).json({error: "Username reached the max of TODOS in free plan"})
+  }
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+  const { id: todoId } = request.params;
+
+  const user = users.find(user => user.username === username);
+
+  if(!user) {
+    return response.status(404).json({error: "User not found!"});
+  }
+  
+  const todo = user.todos.find(todo => todo.id === todoId);
+  
+  if(!validate(todoId)) {
+    return response.status(400).json({error: "This Todo ID are incorrect!!"});
+  } else if(!todo) {
+    return response.status(404).json({error: "Todo not found!"})
+  }
+  
+  request.todo = todo;
+  request.user = user;
+
+  return next();
 }
 
 function findUserById(request, response, next) {
-  // Complete aqui
+  const { id } = request.params;
+
+  const user = users.find(user => user.id === id);
+
+  if(!user) {
+    return response.status(404).json({error: "ID not found!"});
+  }
+
+  request.user = user;
+
+  return next();
 }
 
 app.post('/users', (request, response) => {
   const { name, username } = request.body;
 
-  const usernameAlreadyExists = users.some((user) => user.username === username);
+  const usernameAlreadyExists = users.some(user => user.username == username);
 
   if (usernameAlreadyExists) {
     return response.status(400).json({ error: 'Username already exists' });
@@ -45,13 +94,13 @@ app.post('/users', (request, response) => {
   users.push(user);
 
   return response.status(201).json(user);
-});
+}); // ANÁLISE FEITA
 
 app.get('/users/:id', findUserById, (request, response) => {
   const { user } = request;
 
   return response.json(user);
-});
+});  // ANÁLISE FEITA
 
 app.patch('/users/:id/pro', findUserById, (request, response) => {
   const { user } = request;
@@ -63,13 +112,13 @@ app.patch('/users/:id/pro', findUserById, (request, response) => {
   user.pro = true;
 
   return response.json(user);
-});
+}); // ANÁLISE FEITA
 
 app.get('/todos', checksExistsUserAccount, (request, response) => {
   const { user } = request;
 
   return response.json(user.todos);
-});
+}); // ANÁLISE FEITA
 
 app.post('/todos', checksExistsUserAccount, checksCreateTodosUserAvailability, (request, response) => {
   const { title, deadline } = request.body;
